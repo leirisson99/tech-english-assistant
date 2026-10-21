@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-tea}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Speech-to-text: ScribeCrate (faster-whisper). OpenAI-compatible API.
+  stt:
+    image: hwdsl2/whisper-server
+    restart: unless-stopped
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_LANGUAGE: en
+      WHISPER_API_KEY: ${WHISPER_API_KEY:?set WHISPER_API_KEY in .env}
+    ports:
+      - "127.0.0.1:${STT_PORT:-9000}:9000"
+    volumes:
+      - whisper-data:/var/lib/whisper
+
+  # Text-to-speech: OVOS TTS server with the Piper engine.
+  tts:
+    image: smartgic/ovos-tts-server-piper:alpha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${TTS_PORT:-9666}:9666"
+    volumes:
+      - ./docker/ovos/config:/home/ovos/.config/mycroft:ro
+      - tts-cache:/home/ovos/.local/share
+
+volumes:
+  postgres-data:
+  whisper-data:
+  tts-cache:
